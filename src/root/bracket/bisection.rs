@@ -1,14 +1,21 @@
-use crate::SolverError;
 use crate::Convergence;
 use crate::RootResult;
+use crate::SolverError;
 
-pub fn bisection<F>(f: F,mut a:f64, mut b:f64, tol: f64, max_iter: usize) -> Result<RootResult, SolverError>
+pub fn bisection<F>(
+    f: F,
+    mut a: f64,
+    mut b: f64,
+    tol: f64,
+    max_iter: usize,
+) -> Result<RootResult, SolverError>
 where
-    F: Fn(f64) -> f64
+    F: Fn(f64) -> f64,
 {
-
     if a >= b {
-        return Err(SolverError::InvalidInput("a must be less than b".to_string()));
+        return Err(SolverError::InvalidInput(
+            "a must be less than b".to_string(),
+        ));
     }
 
     let mut fa: f64 = f(a);
@@ -46,12 +53,10 @@ where
         } else {
             b = c;
         }
-
     }
 
-    return Err(SolverError::NotConverged { max_iter })
+    return Err(SolverError::NotConverged { max_iter });
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -59,7 +64,6 @@ mod tests {
 
     #[test]
     fn test_ok_bisection() {
-
         // Formula: f(c) = (g * m / c) * (1 - e^(-(c / m) * t)) - v
         // where:
         // g = gravitational constant
@@ -81,9 +85,9 @@ mod tests {
         let tol: f64 = 1e-6;
         let max_iter: usize = 100;
 
-        let func = |c: f64| newton_second_law(c,g,m,t,v);
+        let func = |c: f64| newton_second_law(c, g, m, t, v);
 
-        let result = bisection(func, a, b, tol, max_iter); 
+        let result = bisection(func, a, b, tol, max_iter);
         println!("Result: {:?}", result);
         assert!(result.is_ok());
     }
@@ -91,10 +95,7 @@ mod tests {
     #[test]
     fn test_bisection_a_greater_than_b() {
         let result = bisection(|x| x, 16.0, 12.0, 1e-6, 100);
-        assert!(matches!(
-            result,
-            Err(SolverError::InvalidInput(_))
-        ));
+        assert!(matches!(result, Err(SolverError::InvalidInput(_))));
     }
 
     #[test]
@@ -114,6 +115,3 @@ mod tests {
         ));
     }
 }
-
-
-

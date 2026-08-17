@@ -1,7 +1,7 @@
-pub mod root;
-pub mod error;
 pub mod conv;
+pub mod error;
+pub mod root;
 
-pub use error::SolverError;
 pub use conv::Convergence;
+pub use error::SolverError;
 pub use root::RootResult;
