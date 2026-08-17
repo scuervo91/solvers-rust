@@ -23,11 +23,14 @@ where
 
         let fc: f64 = f(c);
 
-        if fc == 0.0 || (b - a).abs() < tol {
+        let approx_error: f64 = ((b - a) / (b + a)).abs();
+
+        if fc == 0.0 || approx_error < tol {
             let conv = Convergence {
                 iterations: iter,
                 nfev: 2 + iter, // f(a), f(b), then one f(c) per iteration
                 residual_norm: fc.abs(),
+                approx_error: approx_error,
             };
             let result = RootResult {
                 root: c,
