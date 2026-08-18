@@ -4,58 +4,71 @@ use crate::SolverError;
 
 pub fn bisection<F>(
     f: F,
-    mut a: f64,
-    mut b: f64,
+    mut xl: f64,
+    mut xu: f64,
     tol: f64,
     max_iter: usize,
 ) -> Result<RootResult, SolverError>
 where
     F: Fn(f64) -> f64,
 {
-    if a >= b {
+    if xl >= xu {
         return Err(SolverError::InvalidInput(
-            "a must be less than b".to_string(),
+            "xl must be less than xu".to_string(),
         ));
     }
 
-    let mut fa: f64 = f(a);
-    let fb: f64 = f(b);
+    let mut fl: f64 = f(xl);
+    let fu: f64 = f(xu);
 
-    if fa.signum() * fb.signum() >= 0.0 {
+    if fl.signum() * fu.signum() >= 0.0 {
         return Err(SolverError::NoRootInBrackets);
     }
 
+    let mut c: f64 = 0.0;
+    let mut fc: f64 = 0.0;
+    let mut approx_error: f64 = 0.0;
+
     for iter in 1..=max_iter {
-        let c: f64 = a + (b - a) / 2.0;
-
-        let fc: f64 = f(c);
-
-        let approx_error: f64 = ((b - a) / (b + a)).abs();
+        c = xl + (xu - xl) / 2.0;
+        fc = f(c);
+        approx_error = ((xu - xl) / (xu + xl)).abs();
 
         if fc == 0.0 || approx_error < tol {
             let conv = Convergence {
                 iterations: iter,
-                nfev: 2 + iter, // f(a), f(b), then one f(c) per iteration
+                nfev: 2 + iter, // f(xl), f(xu), then one f(c) per iteration
                 residual_norm: fc.abs(),
                 approx_error: approx_error,
             };
             let result = RootResult {
                 root: c,
                 conv,
-                bracket: Some((a, b)),
+                bracket: Some((xl, xu)),
             };
             return Ok(result);
         }
 
-        if fa.signum() == fc.signum() {
-            a = c;
-            fa = fc;
+        if fl.signum() == fc.signum() {
+            xl = c;
+            fl = fc;
         } else {
-            b = c;
+            xu = c;
         }
     }
 
-    return Err(SolverError::NotConverged { max_iter });
+    let conv = Convergence {
+        iterations: max_iter,
+        nfev: 2 + max_iter,
+        residual_norm: fc.abs(),
+        approx_error,
+    };
+    let result = RootResult {
+        root: c,
+        conv,
+        bracket: Some((xl, xu)),
+    };
+    return Err(SolverError::NotConverged { max_iter, result });
 }
 
 #[cfg(test)]
@@ -80,14 +93,14 @@ mod tests {
         let t: f64 = 10.0;
         let g: f64 = 9.81;
 
-        let a: f64 = 12.0;
-        let b: f64 = 16.0;
+        let xl: f64 = 12.0;
+        let xu: f64 = 16.0;
         let tol: f64 = 1e-6;
         let max_iter: usize = 100;
 
         let func = |c: f64| newton_second_law(c, g, m, t, v);
 
-        let result = bisection(func, a, b, tol, max_iter);
+        let result = bisection(func, xl, xu, tol, max_iter);
         println!("Result: {:?}", result);
         assert!(result.is_ok());
     }
@@ -111,7 +124,7 @@ mod tests {
         let result = bisection(|x| x - 1.0, 0.0, 3.0, 1e-12, 1);
         assert!(matches!(
             result,
-            Err(SolverError::NotConverged { max_iter: 1 })
+            Err(SolverError::NotConverged { max_iter: 1, .. })
         ));
     }
 }

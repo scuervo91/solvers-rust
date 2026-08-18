@@ -1,3 +1,4 @@
+use crate::root::RootResult;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -10,5 +11,5 @@ pub enum SolverError {
     InvalidInput(String),
 
     #[error("Failed to converge within {max_iter} iterations")]
-    NotConverged { max_iter: usize },
+    NotConverged { max_iter: usize, result: RootResult },
 }
