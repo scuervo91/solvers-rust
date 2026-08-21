@@ -12,4 +12,7 @@ pub enum SolverError {
 
     #[error("Failed to converge within {max_iter} iterations")]
     NotConverged { max_iter: usize, result: RootResult },
+
+    #[error("Division by zero")]
+    DivisionByZero,
 }
