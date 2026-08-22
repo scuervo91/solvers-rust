@@ -64,7 +64,11 @@ where
         residual_norm: fc.abs(),
         approx_error: approx_error,
     };
-    let result = RootResult { root: c, conv, bracket: Some((xl, xu)) };
+    let result = RootResult {
+        root: c,
+        conv,
+        bracket: Some((xl, xu)),
+    };
 
     return Err(SolverError::NotConverged { max_iter, result });
 }
@@ -126,10 +130,9 @@ mod tests {
         ));
     }
 
-
     #[test]
     fn test_slow_convergence() {
-        let result = false_position(|x| x.powf(10.0) -1.0, 0.0, 1.6, 1e-12, 100);
+        let result = false_position(|x| x.powf(10.0) - 1.0, 0.0, 1.6, 1e-12, 100);
         println!("Result: {:?}", result);
         assert!(matches!(
             result,

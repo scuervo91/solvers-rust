@@ -1,14 +1,9 @@
+use crate::Convergence;
 use crate::RootResult;
 use crate::SolverError;
-use crate::Convergence;
 
-pub fn fixed_point<F>(
-    f: F,
-    x0: f64,
-    tol: f64,
-    max_iter: usize,
-) -> Result<RootResult, SolverError>
-where 
+pub fn fixed_point<F>(f: F, x0: f64, tol: f64, max_iter: usize) -> Result<RootResult, SolverError>
+where
     F: Fn(f64) -> f64,
 {
     let mut xr: f64 = x0;
@@ -65,5 +60,4 @@ mod tests {
         println!("Result: {:?}", result);
         assert!(result.is_ok());
     }
-
 }

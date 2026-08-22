@@ -145,10 +145,8 @@ mod tests {
 
     #[test]
     fn test_slow_convergence() {
-        let result = modified_false_position(|x| x.powf(10.0) -1.0, 0.0, 1.6, 1e-12, 100);
+        let result = modified_false_position(|x| x.powf(10.0) - 1.0, 0.0, 1.6, 1e-12, 100);
         println!("Result: {:?}", result);
         assert!(result.is_ok());
     }
-
-
 }
