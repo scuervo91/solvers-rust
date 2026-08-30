@@ -1,5 +1,6 @@
 pub mod conv;
 pub mod error;
+pub mod polynomials;
 pub mod root;
 
 pub use conv::Convergence;
