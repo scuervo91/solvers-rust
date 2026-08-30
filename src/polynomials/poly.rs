@@ -51,4 +51,29 @@ mod tests {
         assert_eq!(p.eval_at(1.0), -96.0);
         assert_eq!(p.eval_at(2.0), 0.0); // root
     }
+
+    #[test]
+    fn test_eval() {
+        let p = f5();
+        let xs = [0.0, 1.0, 2.0];
+        assert_eq!(p.eval(&xs), vec![-120.0, -96.0, 0.0]);
+    }
+
+    #[test]
+    fn test_eval_diff_at_f5() {
+        let p = f5();
+        // f5'(x) = 5x^4 - 28x^3 - 9x^2 + 158x - 46
+        assert_eq!(p.eval_diff_at(0.0), (-120.0, -46.0));
+        assert_eq!(p.eval_diff_at(1.0), (-96.0, 80.0));
+        assert_eq!(p.eval_diff_at(2.0), (0.0, 90.0));
+    }
+
+    #[test]
+    fn test_eval_diff() {
+        let p = f5();
+        let xs = [0.0, 1.0, 2.0];
+        let (ps, dps) = p.eval_diff(&xs);
+        assert_eq!(ps, vec![-120.0, -96.0, 0.0]);
+        assert_eq!(dps, vec![-46.0, 80.0, 90.0]);
+    }
 }
