@@ -1,4 +1,5 @@
 use crate::SolverError;
+use std::cmp::max;
 pub struct Polynomial {
     coeffs: Vec<f64>,
 }
@@ -79,6 +80,57 @@ impl Polynomial {
 
         return Ok(Polynomial::new(new_coeffs));
     }
+
+    pub fn polsum(&self, other: &Polynomial) -> Result<Polynomial, SolverError> {
+        let n = max(self.order(), other.order());
+
+        let mut new_coeffs = Vec::with_capacity(n + 1);
+
+        for i in 0..=n {
+            let coeff_i  = self.coeffs[i] + other.coeffs[i];
+            new_coeffs.push(coeff_i);
+        }
+
+        return Ok(Polynomial::new(new_coeffs));
+    }
+
+    fn trim_leading_zeros(coeffs: &[f64]) -> Vec<f64> {
+        match coeffs.iter().position(|&c| c != 0.0) {
+            Some(i) => coeffs[i..].to_vec(),
+            None => vec![0.0],
+        }
+    }
+
+    pub fn poldiv(&self, other: &Polynomial) -> Result<(Polynomial, Polynomial), SolverError> {
+        let dividend = Self::trim_leading_zeros(&self.coeffs);
+        let divisor = Self::trim_leading_zeros(&other.coeffs);
+
+        if divisor.len() == 1 && divisor[0] == 0.0 {
+            return Err(SolverError::DivisionByZero);
+        }
+
+        let n = dividend.len() - 1;
+        let m = divisor.len() - 1;
+
+        if n < m {
+            return Ok((Polynomial::new(vec![0.0]), Polynomial::new(dividend)));
+        }
+
+        let w = n - m;
+        let mut r = dividend;
+        let mut q = vec![0.0; w + 1];
+
+        for i in 0..=w {
+            q[i] = r[i] / divisor[0];
+            for j in 1..=m {
+                r[i + j] -= q[i] * divisor[j];
+            }
+        }
+
+        let q = Self::trim_leading_zeros(&q);
+        let rem = Self::trim_leading_zeros(&r[w + 1..]);
+        return Ok((Polynomial::new(q), Polynomial::new(rem)));
+    }
 }
 
 #[cfg(test)]
@@ -148,5 +200,88 @@ mod tests {
 
         let p_deflated = p.deflate_monomial(t).unwrap();
         assert_eq!(p_deflated.coeffs(), &[1.0, -10.0, 27.0, -2.0, -40.0])
+    }
+
+    #[test]
+    fn test_poldiv_exact() {
+        let p = f2();
+        let d = Polynomial::new(vec![1.0, -4.0]); // x - 4
+        let (q, r) = p.poldiv(&d).unwrap();
+        assert_eq!(q.coeffs(), &[1.0, 6.0]);
+        assert_eq!(r.coeffs(), &[0.0]);
+    }
+
+    #[test]
+    fn test_poldiv_remainder() {
+        let p = f2();
+        let d = Polynomial::new(vec![1.0, -1.0]); // x - 1
+        let (q, r) = p.poldiv(&d).unwrap();
+        // (x - 1)(x + 3) - 21 = x^2 + 2x - 24
+        assert_eq!(q.coeffs(), &[1.0, 3.0]);
+        assert_eq!(r.coeffs(), &[-21.0]);
+    }
+
+    #[test]
+    fn test_poldiv_f5() {
+        let p = f5();
+        let d = Polynomial::new(vec![1.0, 3.0]); // x + 3
+        let (q, r) = p.poldiv(&d).unwrap();
+        assert_eq!(q.coeffs(), &[1.0, -10.0, 27.0, -2.0, -40.0]);
+        assert_eq!(r.coeffs(), &[0.0]);
+    }
+
+    #[test]
+    fn test_poldiv_lower_degree() {
+        let p = f2();
+        let d = f5();
+        let (q, r) = p.poldiv(&d).unwrap();
+        assert_eq!(q.coeffs(), &[0.0]);
+        assert_eq!(r.coeffs(), p.coeffs());
+    }
+
+    #[test]
+    fn test_poldiv_equal_degree() {
+        let p = Polynomial::new(vec![2.0, 1.0]); // 2x + 1
+        let d = Polynomial::new(vec![1.0, 1.0]); // x + 1
+        let (q, r) = p.poldiv(&d).unwrap();
+        assert_eq!(q.coeffs(), &[2.0]);
+        assert_eq!(r.coeffs(), &[-1.0]);
+    }
+
+    #[test]
+    fn test_poldiv_cubic() {
+        let p = Polynomial::new(vec![1.0, -6.0, 11.0, -6.0]); // x^3 - 6x^2 + 11x - 6
+        let d = Polynomial::new(vec![1.0, -1.0]); // x - 1
+        let (q, r) = p.poldiv(&d).unwrap();
+        assert_eq!(q.coeffs(), &[1.0, -5.0, 6.0]);
+        assert_eq!(r.coeffs(), &[0.0]);
+    }
+
+    #[test]
+    fn test_poldiv_remainder_trim() {
+        // (x^3 - 1) / (x^2 + x + 1) = x - 1 remainder 0
+        let p = Polynomial::new(vec![1.0, 0.0, 0.0, -1.0]);
+        let d = Polynomial::new(vec![1.0, 1.0, 1.0]);
+        let (q, r) = p.poldiv(&d).unwrap();
+        assert_eq!(q.coeffs(), &[1.0, -1.0]);
+        assert_eq!(r.coeffs(), &[0.0]);
+        assert_eq!(r.order(), 0);
+    }
+
+    #[test]
+    fn test_poldiv_leading_zeros() {
+        let p = f2();
+        let d = Polynomial::new(vec![0.0, 1.0, -4.0]); // 0x^2 + x - 4
+        let (q, r) = p.poldiv(&d).unwrap();
+        assert_eq!(q.coeffs(), &[1.0, 6.0]);
+        assert_eq!(r.coeffs(), &[0.0]);
+    }
+
+    #[test]
+    fn test_poldiv_zero_divisor() {
+        let p = f2();
+        let d = Polynomial::new(vec![0.0, 0.0]);
+        let result = p.poldiv(&d);
+        assert!(matches!(result, Err(SolverError::DivisionByZero)));
     }
 }
