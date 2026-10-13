@@ -1,4 +1,6 @@
+use crate::RootResult;
 use crate::SolverError;
+use crate::conv::Convergence;
 use std::cmp::max;
 pub struct Polynomial {
     coeffs: Vec<f64>,
@@ -87,7 +89,7 @@ impl Polynomial {
         let mut new_coeffs = Vec::with_capacity(n + 1);
 
         for i in 0..=n {
-            let coeff_i  = self.coeffs[i] + other.coeffs[i];
+            let coeff_i = self.coeffs[i] + other.coeffs[i];
             new_coeffs.push(coeff_i);
         }
 
@@ -131,6 +133,76 @@ impl Polynomial {
         let rem = Self::trim_leading_zeros(&r[w + 1..]);
         return Ok((Polynomial::new(q), Polynomial::new(rem)));
     }
+
+    // Root Finding Section
+    pub fn muller_real_root(
+        &self,
+        mut x0: f64,
+        mut x1: f64,
+        mut x2: f64,
+        tol: f64,
+        max_iter: usize,
+    ) -> Result<RootResult, SolverError> {
+        let mut approx_error: f64 = 0.0;
+        let mut x3: f64 = 0.0;
+
+        for i in 1..=max_iter {
+            let fx0 = self.eval_at(x0);
+            let fx1 = self.eval_at(x1);
+            let fx2 = self.eval_at(x2);
+
+            let c = fx2;
+            let h0 = x1 - x0;
+            let h1 = x2 - x1;
+            let delta0 = (fx1 - fx0) / h0;
+            let delta1 = (fx2 - fx1) / h1;
+
+            let a = (delta1 - delta0) / (h1 + h0);
+            let b = (a * h1) + delta1;
+
+            let disc = b * b - 4.0 * a * c;
+
+            if disc < 0.0 {
+                return Err(SolverError::InvalidInput(
+                    "Discriminant is negative".to_string(),
+                ));
+            }
+
+            x3 = x2 + ((-2.0 * c) / (b + b.signum() * disc.sqrt()));
+            approx_error = ((x3 - x2) / x3).abs();
+
+            if approx_error < tol {
+                return Ok(RootResult {
+                    root: x3,
+                    conv: Convergence {
+                        iterations: i,
+                        nfev: i,
+                        residual_norm: self.eval_at(x3).abs(),
+                        approx_error: approx_error,
+                    },
+                    bracket: None,
+                });
+            }
+
+            x0 = x1;
+            x1 = x2;
+            x2 = x3;
+        }
+
+        return Err(SolverError::NotConverged {
+            max_iter: max_iter,
+            result: RootResult {
+                root: x3,
+                conv: Convergence {
+                    iterations: max_iter,
+                    nfev: max_iter,
+                    residual_norm: self.eval_at(x3).abs(),
+                    approx_error: approx_error,
+                },
+                bracket: None,
+            },
+        });
+    }
 }
 
 #[cfg(test)]
@@ -145,6 +217,10 @@ mod tests {
 
     fn f2() -> Polynomial {
         Polynomial::new(vec![1.0, 2.0, -24.0])
+    }
+
+    fn f3() -> Polynomial {
+        Polynomial::new(vec![1.0, 0.0, -13.0, -12.0])
     }
 
     #[test]
@@ -283,5 +359,18 @@ mod tests {
         let d = Polynomial::new(vec![0.0, 0.0]);
         let result = p.poldiv(&d);
         assert!(matches!(result, Err(SolverError::DivisionByZero)));
+    }
+
+    #[test]
+    fn test_muller_real_root() {
+        let p = f3();
+        let result = p.muller_real_root(4.5, 5.5, 5.0, 1e-6, 100).unwrap();
+        println!("result: {:?}", result);
+        assert!((result.root - 4.0).abs() < 1e-6);
+        assert!(result.conv.iterations < 100);
+        assert!(result.conv.nfev < 100);
+        assert!(result.conv.residual_norm < 1e-6);
+        assert!(result.conv.approx_error < 1e-6);
+        assert!(result.bracket.is_none());
     }
 }
