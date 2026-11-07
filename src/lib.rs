@@ -1,5 +1,6 @@
 pub mod conv;
 pub mod error;
+pub mod linear;
 pub mod polynomials;
 pub mod root;
 

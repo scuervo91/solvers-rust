@@ -15,4 +15,7 @@ pub enum SolverError {
 
     #[error("Division by zero")]
     DivisionByZero,
+
+    #[error("Invalid Shape: {0}")]
+    InvalidShape(String),
 }
